@@ -1,55 +1,75 @@
-require "bundler/capistrano"
+#require "bundler/capistrano"
 
-server "200.134.18.125", :web, :app, :db, primary: true
+#set :stages, %w(staging production)
+#set :default_stage, "production"
+set :rails_env, 'production'
+
+set :rvm_type, :user
+set :rvm_ruby_version, '2.0.0'
 
 set :application, "blog"
-set :user, "deployer"
-set :deploy_to, "/home/#{user}/apps/#{application}"
+set :user, 'deployer'
 set :deploy_via, :remote_cache
-set :use_sudo, false
+#set :use_sudo, false
 
 set :scm, "git"
-set :repository, "git@github.com:ryanb/#{application}.git"
-set :repository, "ssh://deployer@200.134.18.125:22129/home/deployer/repos/#{application}.git"
+set :repo_url, "/home/deployer/repos/#{fetch(:application)}.git"
 set :branch, "master"
 
-default_run_options[:pty] = true
-ssh_options[:forward_agent] = true
-ssh_options[:port] = 22129
+#set :shared_path, "/home/deployer/apps/#{fetch(:application)}/shared"
 
-after "deploy", "deploy:cleanup" # keep only the last 5 releases
+set :normalize_asset_timestamps, %{public/images public/javascripts public/stylesheets}
+#default_run_options[:pty] = true
+
+set :linked_files, %w{config/database.yml}
+#set :linked_dirs, %w{bin log tmp/pids tmp/cache tmp/sockets vendor/bundle public/system}
+
+# set :linked_files, %w{config/database.yml}
+# set :linked_files, %w{config/database.yml}
+#default_run_options[:pty] = true
+#ssh_options[:forward_agent] = true
+
+#after "deploy", "deploy:cleanup" # keep only the last 5 releases
 
 namespace :deploy do
   %w[start stop restart].each do |command|
     desc "#{command} unicorn server"
-    task command, roles: :app, except: {no_release: true} do
-      run "/etc/init.d/unicorn_#{application} #{command}"
+    task command do
+      on roles(:app) do
+        execute "/etc/init.d/unicorn_#{fetch(:application)} #{command}"
+      end
     end
   end
 
-  task :setup_config, roles: :app do
-    sudo "ln -nfs #{current_path}/config/nginx.conf /etc/nginx/sites-enabled/#{application}"
-    sudo "ln -nfs #{current_path}/config/unicorn_init.sh /etc/init.d/unicorn_#{application}"
-    run "mkdir -p #{shared_path}/config"
-    put File.read("config/database.example.yml"), "#{shared_path}/config/database.yml"
-    puts "Now edit the config files in #{shared_path}."
-  end
-  after "deploy:setup", "deploy:setup_config"
-
-  task :symlink_config, roles: :app do
-    run "ln -nfs #{shared_path}/config/database.yml #{release_path}/config/database.yml"
-  end
-  after "deploy:finalize_update", "deploy:symlink_config"
-
-  desc "Make sure local git is in sync with remote."
-  task :check_revision, roles: :web do
-    unless `git rev-parse HEAD` == `git rev-parse origin/master`
-      puts "WARNING: HEAD is not the same as origin/master"
-      puts "Run `git push` to sync changes."
-      exit
+  task :setup_config do
+    on roles(:app) do
+      within current_path do
+        sudo "ln -nfs #{current_path}/config/nginx.conf /etc/nginx/sites-enabled/#{fetch(:application)}.conf"
+        sudo "ln -nfs #{current_path}/config/unicorn_init.sh /etc/init.d/unicorn_#{fetch(:application)}"
+        execute "mkdir #{current_path}/tmp/pids"
+        execute "touch #{current_path}/tmp/pids/unicorn.pid"
+      end
+      puts "Now edit the config files in #{fetch(:shared_path)}."
     end
   end
-  before "deploy", "deploy:check_revision"
+  after "deploy:check", "deploy:setup_config"
+
+  #task :symlink_config, roles: :app do
+  #  run "ln -nfs #{shared_path}/config/database.yml #{release_path}/config/database.yml"
+  #end
+  #after "deploy:finalize_update", "deploy:symlink_config"
+
+  #desc "Make sure local git is in sync with remote."
+  #task :check_revision do
+  #  on roles(:app) do
+  #    unless `git rev-parse HEAD` == `git rev-parse origin/master`
+  #      puts "WARNING: HEAD is not the same as origin/master"
+  #      puts "Run `git push` to sync changes."
+  #      exit
+  #    end
+  #  end
+  #end
+  #before "deploy", "deploy:check_revision"
 end
 
 # set :application, 'my_app_name'
