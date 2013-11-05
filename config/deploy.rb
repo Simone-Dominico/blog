@@ -22,14 +22,14 @@ set :normalize_asset_timestamps, %{public/images public/javascripts public/style
 #default_run_options[:pty] = true
 
 set :linked_files, %w{config/database.yml}
-#set :linked_dirs, %w{bin log tmp/pids tmp/cache tmp/sockets vendor/bundle public/system}
+set :linked_dirs, %w{bin log tmp/pids tmp/cache tmp/sockets vendor/bundle public/system}
 
 # set :linked_files, %w{config/database.yml}
 # set :linked_files, %w{config/database.yml}
 #default_run_options[:pty] = true
 #ssh_options[:forward_agent] = true
 
-#after "deploy", "deploy:cleanup" # keep only the last 5 releases
+after "deploy", "deploy:cleanup" # keep only the last 5 releases
 
 namespace :deploy do
   %w[start stop restart].each do |command|
@@ -46,13 +46,11 @@ namespace :deploy do
       within current_path do
         sudo "ln -nfs #{current_path}/config/nginx.conf /etc/nginx/sites-enabled/#{fetch(:application)}.conf"
         sudo "ln -nfs #{current_path}/config/unicorn_init.sh /etc/init.d/unicorn_#{fetch(:application)}"
-        execute "mkdir #{current_path}/tmp/pids"
-        execute "touch #{current_path}/tmp/pids/unicorn.pid"
       end
       puts "Now edit the config files in #{fetch(:shared_path)}."
     end
   end
-  after "deploy:check", "deploy:setup_config"
+  after "deploy:updated", "deploy:setup_config"
 
   #task :symlink_config, roles: :app do
   #  run "ln -nfs #{shared_path}/config/database.yml #{release_path}/config/database.yml"
