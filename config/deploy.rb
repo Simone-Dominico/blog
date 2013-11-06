@@ -11,12 +11,13 @@ set :scm, "git"
 set :repo_url, "/home/deployer/repos/#{fetch(:application)}.git"
 set :branch, "master"
 
-set :normalize_asset_timestamps, %{public/images public/javascripts public/stylesheets}
-
 set :linked_files, %w{config/database.yml}
 set :linked_dirs, %w{bin log tmp/pids tmp/cache tmp/sockets vendor/bundle public/system}
 
 set :normalize_asset_timestamps, false
+
+set :format, :pretty
+set :log_level, :info
 
 after "deploy", "deploy:cleanup" # keep only the last 5 releases
 
@@ -36,16 +37,9 @@ namespace :deploy do
         sudo "ln -nfs #{current_path}/config/nginx.conf /etc/nginx/sites-enabled/#{fetch(:application)}.conf"
         sudo "ln -nfs #{current_path}/config/unicorn_init.sh /etc/init.d/unicorn_#{fetch(:application)}"
       end
-      puts "Now edit the config files in #{fetch(:shared_path)}."
+      puts "Now edit the config files in #{shared_path}."
     end
   end
-  after "deploy:updated", "deploy:setup_config"
+  before "deploy:restart", "deploy:setup_config"
 
-  after :restart, :clear_cache do
-    on roles(:web), in: :groups, limit: 3, wait: 10 do
-       within release_path do
-         execute :rake, 'cache:clear'
-       end
-    end
-  end
 end
