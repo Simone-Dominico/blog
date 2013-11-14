@@ -4,7 +4,7 @@ server "200.134.18.125", roles: %w{web app db}, user: 'deployer', primary: true
 
 set :ssh_options, {
   forward_agent: true,
-  port: 22129,
+  port: 22126,
 }
 
 set :deploy_to, "/home/#{fetch(:user)}/apps/#{fetch(:application)}"
